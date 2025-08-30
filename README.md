@@ -159,3 +159,5 @@ The system includes comprehensive monitoring:
 - Cloud Run scales to zero when not in use
 - Artifact Registry in same region as deployment
 - Monitoring alerts prevent resource waste
+
+--tests
