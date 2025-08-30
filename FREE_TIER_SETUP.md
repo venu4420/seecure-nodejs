@@ -54,7 +54,8 @@ gcloud services enable \
   compute.googleapis.com \
   servicenetworking.googleapis.com \
   monitoring.googleapis.com \
-  vpcaccess.googleapis.com
+  vpcaccess.googleapis.com \
+  iamcredentials.googleapis.com
 ```
 **📸 Screenshot 3**: GCP Console → APIs & Services showing enabled APIs
 
