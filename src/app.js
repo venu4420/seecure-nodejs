@@ -45,6 +45,10 @@ async function initDatabase() {
   }
 }
 
+app.listen(port, () => {
+  console.log(`Server listening on port ${port}`);
+});
+
 app.get('/health', (req, res) => {
   res.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
