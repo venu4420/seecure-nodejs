@@ -17,13 +17,19 @@ async function initDatabase() {
   const client = new SecretManagerServiceClient();
   const projectId = process.env.GOOGLE_CLOUD_PROJECT;
   
+  console.log('Initializing database connection...');
+  console.log('Project ID:', projectId);
+  console.log('DB Host:', process.env.DB_HOST);
+  console.log('DB User:', process.env.DB_USER);
+  console.log('DB Name:', process.env.DB_NAME);
+  
   try {
     const [dbPassword] = await client.accessSecretVersion({
       name: `projects/${projectId}/secrets/db-password/versions/latest`,
     });
     
     pool = new Pool({
-      user: process.env.DB_USER || 'app-user',
+      user: process.env.DB_USER || 'appuser',
       host: process.env.DB_HOST,
       database: process.env.DB_NAME || 'appdb',
       password: dbPassword.payload.data.toString(),
@@ -39,15 +45,13 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    
+    console.log('Database initialized successfully');
   } catch (error) {
     console.error('Database initialization failed:', error);
     process.exit(1);
   }
 }
-
-app.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
-});
 
 app.get('/health', (req, res) => {
   res.json({ status: 'healthy', timestamp: new Date().toISOString() });
@@ -55,6 +59,9 @@ app.get('/health', (req, res) => {
 
 app.get('/users', async (req, res) => {
   try {
+    if (!pool) {
+      return res.status(500).json({ error: 'Database not initialized' });
+    }
     const result = await pool.query('SELECT * FROM users ORDER BY created_at DESC');
     res.json(result.rows);
   } catch (error) {
@@ -71,6 +78,9 @@ app.post('/users', async (req, res) => {
   }
 
   try {
+    if (!pool) {
+      return res.status(500).json({ error: 'Database not initialized' });
+    }
     const result = await pool.query(
       'INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *',
       [name, email]
