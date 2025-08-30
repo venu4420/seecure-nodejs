@@ -1,76 +1,108 @@
 # Secure Node.js Deployment on Google Cloud
 
-A secure CI/CD pipeline for deploying a containerized Node.js application on Google Cloud Run with DevSecOps principles.
+DevSecOps implementation of containerized Node.js application on Google Cloud Run with secure infrastructure.
 
-## 📚 Assignment Documentation
+## Setup and Deployment Steps
 
-- **[🎯 ASSIGNMENT COMPLETION GUIDE](FREE_TIER_SETUP.md)** - Complete step-by-step guide with screenshots for assignment submission
+### Prerequisites
+1. GCP account with billing enabled
+2. Google Cloud CLI installed
+3. Terraform installed
+4. GitHub repository configured
 
-## Architecture
+### Deployment
 
-- **Application**: Node.js REST API with PostgreSQL
-- **Container**: Multi-stage Docker build with non-root user
-- **Deployment**: Google Cloud Run with VPC connectivity
-- **Database**: Cloud SQL PostgreSQL in private VPC
-- **Secrets**: Google Secret Manager for credentials
-- **Infrastructure**: Terraform automation
-- **CI/CD**: GitHub Actions with Workload Identity Federation
+# 1. Enable APIs
+gcloud services enable run.googleapis.com sql-component.googleapis.com secretmanager.googleapis.com artifactregistry.googleapis.com compute.googleapis.com servicenetworking.googleapis.com vpcaccess.googleapis.com iamcredentials.googleapis.com
 
-## Security Measures
+# 2. Setup authentication
+gcloud auth application-default login
 
-- **Network Security**: VPC-only connectivity between Cloud Run and Cloud SQL
-- **IAM**: Minimal service accounts with least privilege principles
-- **Secrets**: Google Secret Manager for sensitive data
-- **Container Security**: Vulnerability scanning with Trivy
-- **Code Security**: ESLint, npm audit, and SAST scanning
-- **Authentication**: Workload Identity Federation (no JSON keys)
+# 3. Deploy infrastructure
+terraform init
+terraform apply -auto-approve
 
-## 🚀 Quick Start
+# 4. Build and deploy application
+gcloud auth configure-docker us-central1-docker.pkg.dev
+docker build -t us-central1-docker.pkg.dev/leafy-sight-470608-e9/secure-repo/secure-nodejs-app:latest .
+docker push us-central1-docker.pkg.dev/leafy-sight-470608-e9/secure-repo/secure-nodejs-app:latest
 
-**For assignment completion, follow the [Assignment Completion Guide](FREE_TIER_SETUP.md)**
+## Security Measures Taken
 
-### Quick Deploy Commands:
-```bash
-# 1. Setup GCP and enable APIs
-gcloud auth login
-gcloud config set project YOUR_PROJECT_ID
-gcloud services enable run.googleapis.com sql-component.googleapis.com secretmanager.googleapis.com artifactregistry.googleapis.com compute.googleapis.com servicenetworking.googleapis.com
+### Network Security
+- **VPC Isolation**: Cloud SQL in private VPC with no public IP
+- **VPC Connector**: Secure connectivity between Cloud Run and Cloud SQL
+- **Private IP Only**: Database accessible only through VPC
 
-# 2. Deploy infrastructure
-cd terraform
-terraform init && terraform apply -auto-approve
+### Identity and Access Management
+- **Workload Identity Federation**: OIDC authentication (no JSON keys)
+- **Least Privilege**: Minimal IAM roles for service accounts
+- **Service Account Separation**: Dedicated accounts for different functions
 
-# 3. Test application
-URL=$(terraform output -raw cloud_run_url)
-curl $URL/health
-curl -X POST $URL/users -H "Content-Type: application/json" -d '{"name":"Test","email":"test@example.com"}'
-```
+### Secret Management
+- **Google Secret Manager**: Centralized secret storage
+- **No Hardcoded Secrets**: All sensitive data externalized
+- **Runtime Secret Access**: Secrets retrieved at application startup
 
-## 📊 Monitoring
+### Container Security
+- **Non-root User**: Application runs as unprivileged user (UID 1001)
+- **Minimal Base Image**: Alpine Linux for reduced attack surface
 
-- **Error Alerts**: >3 errors in 5 minutes triggers alert
-- **Log-based Metrics**: Automatic error tracking
-- **Cloud Monitoring**: Integrated GCP monitoring
+### Infrastructure Security
+- **Infrastructure as Code**: All resources defined in Terraform
+- **Encrypted Communications**: TLS for all service communications
+- **Resource Isolation**: Dedicated VPC and subnets
 
-## Security Best Practices Implemented
+## Assumptions Made
 
-1. **Principle of Least Privilege**: Custom IAM roles with minimal permissions
-2. **Network Isolation**: Private VPC with no public IP for Cloud SQL
-3. **Secret Management**: No hardcoded credentials, all secrets in Secret Manager
-4. **Container Security**: Non-root user, minimal base image, vulnerability scanning
-5. **Code Security**: Linting, security audits, and SAST scanning
-6. **Infrastructure Security**: Terraform state management, encrypted communications
+### Technical Assumptions
+- **Free Tier Usage**: Optimized for GCP free tier limits
+- **Regional Deployment**: Single region (us-central1) deployment
 
-## 💰 Cost Optimization
+### Justification for Deviations 
+1. **CI Pipeline**: Focused on infrastructure security over comprehensive testing pipeline
+2. **Monitoring**: Basic alerting implemented due to free tier limitations
 
-- **Free Tier Optimized**: ~$0.25 for assignment completion
-- **Cloud SQL**: db-f1-micro (smallest instance)
-- **Cloud Run**: Scales to zero, 256Mi memory limit
-- **Auto-cleanup**: Destroy resources after assignment
+## Alerting Setup Explanation
 
-## 🧹 Cleanup
+### Log-based Metrics
+- **Error Metric**: Tracks Cloud Run application errors
+- **Metric Type**: DELTA counter for error events
 
-```bash
-# Destroy all resources after taking screenshots
-terraform destroy -auto-approve
-```
+### Alert Policy
+- **Condition**: More than 3 errors in 5-minute window
+- **Threshold**: COMPARISON_GT with value 3
+- **Duration**: 300 seconds (5 minutes)
+- **Aggregation**: ALIGN_RATE with 300s alignment period
+
+### Notification
+- **Escalation**: Basic alert without complex escalation policies
+- **Auto-close**: Alerts auto-close after 30 minutes
+
+### Monitoring Coverage
+- **Application Logs**: All Cloud Run logs captured
+- **Infrastructure Metrics**: CPU, memory, network monitoring
+- **Security Events**: IAM and network access logging
+- **Cost Monitoring**: Billing alerts for budget control
+
+## Architecture Summary
+
+**Components Deployed:**
+- Cloud Run service with VPC connectivity
+- Cloud SQL PostgreSQL in private VPC
+- VPC with private subnets and connector
+- Secret Manager for credentials
+- Artifact Registry for container images
+- Monitoring and alerting policies
+
+**Security Features:**
+- Zero hardcoded secrets
+- Network isolation
+- Workload Identity Federation
+- Container security best practices
+- Infrastructure as Code
+
+**AI tools used:**
+- Co-pilot
+- Amazon Q
+- Windsurf
