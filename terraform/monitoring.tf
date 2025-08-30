@@ -13,24 +13,22 @@ resource "google_logging_metric" "error_count" {
 
 # Simple error alert policy
 resource "google_monitoring_alert_policy" "error_alert" {
-  display_name = "High Error Rate"
+  display_name = "Error Alert"
   combiner     = "OR"
-  
   conditions {
-    display_name = "Error count condition"
-    
     condition_threshold {
-      filter          = "metric.type=\"logging.googleapis.com/user/error_count\""
-      duration        = "300s"
-      comparison      = "COMPARISON_GREATER_THAN"
-      threshold_value = 3
-      
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+      duration        = "60s"
+      filter          = "metric.type=\"logging.googleapis.com/user/error_count\" AND resource.type=\"gae_app\""
       aggregations {
-        alignment_period   = "300s"
+        alignment_period = "60s"
         per_series_aligner = "ALIGN_RATE"
       }
     }
   }
+  notification_channels = [google_monitoring_notification_channel.email.name]
+}
 
   notification_channels = []  # Simplified - no external notifications
   

@@ -1,4 +1,4 @@
-project_id          = "your-gcp-project-id"
+project_id          = "leafy-sight-470608-e9"
 region              = "us-central1"
-notification_email  = "alerts@yourcompany.com"
+notification_email  = "venukrithi007@gmail.com"
 chat_webhook_url    = "https://chat.googleapis.com/v1/spaces/YOUR_SPACE/messages?key=YOUR_KEY"
