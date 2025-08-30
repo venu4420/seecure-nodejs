@@ -1,0 +1,45 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  REGION: us-central1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - id: auth
+      uses: google-github-actions/auth@v2
+      with:
+        workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+        service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+    - uses: google-github-actions/setup-gcloud@v2
+
+    - name: Configure Docker
+      run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+    - name: Build and Push
+      run: |
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/secure-repo/secure-nodejs-app:latest .
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/secure-repo/secure-nodejs-app:latest
+
+    - name: Deploy to Cloud Run
+      run: |
+        gcloud run deploy secure-app \
+          --image ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/secure-repo/secure-nodejs-app:latest \
+          --region ${{ env.REGION }} \
+          --allow-unauthenticated \
+          --max-instances 3 \
+          --memory 256Mi \
+          --cpu 1

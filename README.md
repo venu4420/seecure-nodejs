@@ -2,6 +2,10 @@
 
 A secure CI/CD pipeline for deploying a containerized Node.js application on Google Cloud Run with DevSecOps principles.
 
+## 📚 Assignment Documentation
+
+- **[🎯 ASSIGNMENT COMPLETION GUIDE](FREE_TIER_SETUP.md)** - Complete step-by-step guide with screenshots for assignment submission
+
 ## Architecture
 
 - **Application**: Node.js REST API with PostgreSQL
@@ -21,120 +25,32 @@ A secure CI/CD pipeline for deploying a containerized Node.js application on Goo
 - **Code Security**: ESLint, npm audit, and SAST scanning
 - **Authentication**: Workload Identity Federation (no JSON keys)
 
-## Setup Instructions
+## 🚀 Quick Start
 
-### 1. Prerequisites
+**For assignment completion, follow the [Assignment Completion Guide](FREE_TIER_SETUP.md)**
 
+### Quick Deploy Commands:
 ```bash
-# Install required tools
+# 1. Setup GCP and enable APIs
 gcloud auth login
 gcloud config set project YOUR_PROJECT_ID
+gcloud services enable run.googleapis.com sql-component.googleapis.com secretmanager.googleapis.com artifactregistry.googleapis.com compute.googleapis.com servicenetworking.googleapis.com
 
-# Enable required APIs
-gcloud services enable \
-  run.googleapis.com \
-  sql-component.googleapis.com \
-  secretmanager.googleapis.com \
-  artifactregistry.googleapis.com \
-  compute.googleapis.com \
-  servicenetworking.googleapis.com \
-  monitoring.googleapis.com
-```
-
-### 2. Workload Identity Federation Setup
-
-```bash
-# Create Workload Identity Pool
-gcloud iam workload-identity-pools create "github-pool" \
-  --location="global" \
-  --description="GitHub Actions pool"
-
-# Create Workload Identity Provider
-gcloud iam workload-identity-pools providers create-oidc "github-provider" \
-  --location="global" \
-  --workload-identity-pool="github-pool" \
-  --issuer-uri="https://token.actions.githubusercontent.com" \
-  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
-  --attribute-condition="assertion.repository=='YOUR_GITHUB_USER/YOUR_REPO'"
-
-# Create Service Account for GitHub Actions
-gcloud iam service-accounts create github-actions-sa \
-  --display-name="GitHub Actions Service Account"
-
-# Grant necessary roles
-gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-  --member="serviceAccount:github-actions-sa@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/run.admin"
-
-gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-  --member="serviceAccount:github-actions-sa@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/artifactregistry.admin"
-
-gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-  --member="serviceAccount:github-actions-sa@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/editor"
-
-# Allow GitHub Actions to impersonate the service account
-gcloud iam service-accounts add-iam-policy-binding \
-  github-actions-sa@YOUR_PROJECT_ID.iam.gserviceaccount.com \
-  --role="roles/iam.workloadIdentityUser" \
-  --member="principalSet://iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/github-pool/attribute.repository/YOUR_GITHUB_USER/YOUR_REPO"
-```
-
-### 3. Configure GitHub Repository
-
-Set up the following secrets and variables in your GitHub repository:
-
-**Secrets:**
-- `GCP_WORKLOAD_IDENTITY_PROVIDER`: `projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/github-pool/providers/github-provider`
-- `GCP_SERVICE_ACCOUNT`: `github-actions-sa@YOUR_PROJECT_ID.iam.gserviceaccount.com`
-- `CHAT_WEBHOOK_URL`: Your Google Chat webhook URL
-
-**Variables:**
-- `GCP_PROJECT_ID`: Your GCP project ID
-- `GCP_REGION`: `us-central1`
-- `NOTIFICATION_EMAIL`: Your email for alerts
-
-### 4. Deploy Infrastructure
-
-```bash
+# 2. Deploy infrastructure
 cd terraform
-cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your values
+terraform init && terraform apply -auto-approve
 
-terraform init
-terraform plan
-terraform apply
+# 3. Test application
+URL=$(terraform output -raw cloud_run_url)
+curl $URL/health
+curl -X POST $URL/users -H "Content-Type: application/json" -d '{"name":"Test","email":"test@example.com"}'
 ```
 
-### 5. Test the Application
+## 📊 Monitoring
 
-```bash
-# Get the Cloud Run URL from Terraform output
-CLOUD_RUN_URL=$(terraform output -raw cloud_run_url)
-
-# Test health endpoint
-curl $CLOUD_RUN_URL/health
-
-# Test API endpoints
-curl -X POST $CLOUD_RUN_URL/users \
-  -H "Content-Type: application/json" \
-  -d '{"name":"John Doe","email":"john@example.com"}'
-
-curl $CLOUD_RUN_URL/users
-```
-
-## Monitoring & Alerts
-
-The system includes comprehensive monitoring:
-
-- **Error Alerts**: >3 errors in 5 minutes → Google Chat notification
-- **CPU Alerts**: 
-  - >70% utilization → Google Chat warning
-  - >80% utilization → Email alert
-- **Memory Alerts**:
-  - >70% utilization → Google Chat warning  
-  - >80% utilization → Email alert
+- **Error Alerts**: >3 errors in 5 minutes triggers alert
+- **Log-based Metrics**: Automatic error tracking
+- **Cloud Monitoring**: Integrated GCP monitoring
 
 ## Security Best Practices Implemented
 
@@ -145,19 +61,16 @@ The system includes comprehensive monitoring:
 5. **Code Security**: Linting, security audits, and SAST scanning
 6. **Infrastructure Security**: Terraform state management, encrypted communications
 
-## Assumptions
+## 💰 Cost Optimization
 
-- GCP project exists with billing enabled
-- GitHub repository is configured for Actions
-- Google Chat webhook is available for notifications
-- DNS and SSL certificates managed separately if custom domain needed
-- Terraform state stored locally (consider remote backend for production)
+- **Free Tier Optimized**: ~$0.25 for assignment completion
+- **Cloud SQL**: db-f1-micro (smallest instance)
+- **Cloud Run**: Scales to zero, 256Mi memory limit
+- **Auto-cleanup**: Destroy resources after assignment
 
-## Cost Optimization
+## 🧹 Cleanup
 
-- Cloud SQL uses `db-f1-micro` tier (can be upgraded)
-- Cloud Run scales to zero when not in use
-- Artifact Registry in same region as deployment
-- Monitoring alerts prevent resource waste
-
---tests
+```bash
+# Destroy all resources after taking screenshots
+terraform destroy -auto-approve
+```

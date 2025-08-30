@@ -13,7 +13,7 @@ provider "google" {
   region  = var.region
 }
 
-# VPC Network
+# VPC Network (Free)
 resource "google_compute_network" "vpc" {
   name                    = "secure-app-vpc"
   auto_create_subnetworks = false
@@ -26,23 +26,43 @@ resource "google_compute_subnetwork" "subnet" {
   network       = google_compute_network.vpc.id
 }
 
-# VPC Connector for Cloud Run
+# VPC Connector (Free tier: 1 connector)
 resource "google_vpc_access_connector" "connector" {
-  name          = "secure-app-connector"
+  name          = "secure-connector"
   region        = var.region
   ip_cidr_range = "10.8.0.0/28"
   network       = google_compute_network.vpc.name
+  min_instances = 2
+  max_instances = 3
 }
 
-# Cloud SQL Instance
+# Private IP for Cloud SQL
+resource "google_compute_global_address" "private_ip" {
+  name          = "private-ip"
+  purpose       = "VPC_PEERING"
+  address_type  = "INTERNAL"
+  prefix_length = 16
+  network       = google_compute_network.vpc.id
+}
+
+resource "google_service_networking_connection" "private_vpc" {
+  network                 = google_compute_network.vpc.id
+  service                 = "servicenetworking.googleapis.com"
+  reserved_peering_ranges = [google_compute_global_address.private_ip.name]
+}
+
+# Cloud SQL (Smallest instance)
 resource "google_sql_database_instance" "postgres" {
-  name             = "secure-app-db"
-  database_version = "POSTGRES_15"
-  region           = var.region
+  name                = "secure-db"
+  database_version    = "POSTGRES_15"
+  region              = var.region
   deletion_protection = false
 
   settings {
     tier = "db-f1-micro"
+    
+    disk_size = 10
+    disk_type = "PD_HDD"
     
     ip_configuration {
       ipv4_enabled    = false
@@ -51,25 +71,11 @@ resource "google_sql_database_instance" "postgres" {
     }
 
     backup_configuration {
-      enabled = true
+      enabled = false  # Disable to save costs
     }
   }
 
-  depends_on = [google_service_networking_connection.private_vpc_connection]
-}
-
-resource "google_compute_global_address" "private_ip_address" {
-  name          = "private-ip-address"
-  purpose       = "VPC_PEERING"
-  address_type  = "INTERNAL"
-  prefix_length = 16
-  network       = google_compute_network.vpc.id
-}
-
-resource "google_service_networking_connection" "private_vpc_connection" {
-  network                 = google_compute_network.vpc.id
-  service                 = "servicenetworking.googleapis.com"
-  reserved_peering_ranges = [google_compute_global_address.private_ip_address.name]
+  depends_on = [google_service_networking_connection.private_vpc]
 }
 
 resource "google_sql_database" "database" {
@@ -77,18 +83,18 @@ resource "google_sql_database" "database" {
   instance = google_sql_database_instance.postgres.name
 }
 
+resource "random_password" "db_password" {
+  length  = 12
+  special = false  # Simplified for demo
+}
+
 resource "google_sql_user" "user" {
-  name     = "app-user"
+  name     = "appuser"
   instance = google_sql_database_instance.postgres.name
   password = random_password.db_password.result
 }
 
-resource "random_password" "db_password" {
-  length  = 16
-  special = true
-}
-
-# Secret Manager
+# Secret Manager (Free: 10K operations)
 resource "google_secret_manager_secret" "db_password" {
   secret_id = "db-password"
   
@@ -104,11 +110,11 @@ resource "google_secret_manager_secret_version" "db_password" {
 
 # Service Account
 resource "google_service_account" "cloud_run_sa" {
-  account_id   = "secure-app-runner"
-  display_name = "Cloud Run Service Account"
+  account_id   = "secure-app-sa"
+  display_name = "Cloud Run SA"
 }
 
-resource "google_project_iam_member" "cloud_run_sa_roles" {
+resource "google_project_iam_member" "cloud_run_roles" {
   for_each = toset([
     "roles/cloudsql.client",
     "roles/secretmanager.secretAccessor"
@@ -119,17 +125,16 @@ resource "google_project_iam_member" "cloud_run_sa_roles" {
   member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
 }
 
-# Artifact Registry
+# Artifact Registry (Free: 0.5GB)
 resource "google_artifact_registry_repository" "repo" {
   location      = var.region
-  repository_id = "secure-app-repo"
-  description   = "Secure Node.js app repository"
+  repository_id = "secure-repo"
   format        = "DOCKER"
 }
 
-# Cloud Run Service
+# Cloud Run Service (Free: 2M requests)
 resource "google_cloud_run_v2_service" "app" {
-  name     = "secure-nodejs-app"
+  name     = "secure-app"
   location = var.region
 
   template {
@@ -141,7 +146,7 @@ resource "google_cloud_run_v2_service" "app" {
     }
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/secure-app-repo/secure-nodejs-app:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/secure-repo/secure-nodejs-app:latest"
       
       ports {
         container_port = 8080
@@ -165,14 +170,14 @@ resource "google_cloud_run_v2_service" "app" {
       resources {
         limits = {
           cpu    = "1000m"
-          memory = "512Mi"
+          memory = "256Mi"  # Reduced for free tier
         }
       }
     }
 
     scaling {
       min_instance_count = 0
-      max_instance_count = 10
+      max_instance_count = 3  # Limited for demo
     }
   }
 
@@ -182,8 +187,8 @@ resource "google_cloud_run_v2_service" "app" {
   }
 }
 
-# IAM for public access
-resource "google_cloud_run_service_iam_member" "public_access" {
+# Public access
+resource "google_cloud_run_service_iam_member" "public" {
   service  = google_cloud_run_v2_service.app.name
   location = google_cloud_run_v2_service.app.location
   role     = "roles/run.invoker"
