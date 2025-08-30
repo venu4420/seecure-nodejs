@@ -6,7 +6,7 @@ resource "google_logging_metric" "error_count" {
   filter = "resource.type=\"cloud_run_revision\" AND severity>=ERROR"
   
   metric_descriptor {
-    metric_kind = "GAUGE"
+    metric_kind = "DELTA"
     value_type  = "INT64"
   }
 }
@@ -20,7 +20,7 @@ resource "google_monitoring_alert_policy" "error_alert" {
     display_name = "Error count condition"
     
     condition_threshold {
-      filter          = "metric.type=\"logging.googleapis.com/user/error_count\""
+      filter          = "metric.type=\"logging.googleapis.com/user/error_count\" AND resource.type=\"cloud_run_revision\""
       duration        = "300s"
       comparison      = "COMPARISON_GT"
       threshold_value = 3

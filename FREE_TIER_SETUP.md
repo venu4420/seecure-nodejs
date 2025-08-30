@@ -41,8 +41,8 @@ gcloud config list
 
 ### Step 3: Enable Required APIs
 ```bash
-# Set your project (replace with actual project ID)
-export PROJECT_ID="your-project-id-here"
+# Set your project
+export PROJECT_ID="leafy-sight-470608-e9"
 gcloud config set project $PROJECT_ID
 
 # Enable all required APIs
@@ -53,7 +53,8 @@ gcloud services enable \
   artifactregistry.googleapis.com \
   compute.googleapis.com \
   servicenetworking.googleapis.com \
-  monitoring.googleapis.com
+  monitoring.googleapis.com \
+  vpcaccess.googleapis.com
 ```
 **📸 Screenshot 3**: GCP Console → APIs & Services showing enabled APIs
 
@@ -64,7 +65,7 @@ gcloud iam workload-identity-pools create "github-pool" \
   --location="global" \
   --description="GitHub Actions pool for assignment"
 
-# Create OIDC Provider (replace YOUR_GITHUB_USER/YOUR_REPO)
+# Create OIDC Provider (replace YOUR_GITHUB_USER/YOUR_REPO with your actual GitHub repo)
 gcloud iam workload-identity-pools providers create-oidc "github-provider" \
   --location="global" \
   --workload-identity-pool="github-pool" \
@@ -82,7 +83,7 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
   --role="roles/editor"
 
 # Get project number for next step
-PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format="value(projectNumber)")
+PROJECT_NUMBER=193115445497
 echo "Project Number: $PROJECT_NUMBER"
 
 # Allow GitHub Actions to impersonate service account
@@ -97,11 +98,11 @@ gcloud iam service-accounts add-iam-policy-binding \
 ### Step 5: Configure GitHub Repository
 1. Go to your GitHub repo → Settings → Secrets and variables → Actions
 2. Add **Repository secrets**:
-   - `GCP_WORKLOAD_IDENTITY_PROVIDER`: `projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/github-pool/providers/github-provider`
-   - `GCP_SERVICE_ACCOUNT`: `github-actions-sa@PROJECT_ID.iam.gserviceaccount.com`
+   - `GCP_WORKLOAD_IDENTITY_PROVIDER`: `projects/193115445497/locations/global/workloadIdentityPools/github-pool/providers/github-provider`
+   - `GCP_SERVICE_ACCOUNT`: `github-actions-sa@leafy-sight-470608-e9.iam.gserviceaccount.com`
 
 3. Add **Repository variables**:
-   - `GCP_PROJECT_ID`: Your project ID
+   - `GCP_PROJECT_ID`: `leafy-sight-470608-e9`
    - `GCP_REGION`: `us-central1`
 
 **📸 Screenshot 6**: GitHub repo secrets and variables configuration
@@ -116,12 +117,15 @@ cp terraform.tfvars.example terraform.tfvars
 
 Edit `terraform.tfvars` with your values:
 ```hcl
-project_id = "your-actual-project-id"
+project_id = "leafy-sight-470608-e9"
 region     = "us-central1"
 ```
 
-### Step 7: Deploy with Terraform
+### Step 7: Setup Authentication and Deploy
 ```bash
+# Setup application default credentials for Terraform
+gcloud auth application-default login
+
 # Initialize Terraform
 terraform init
 

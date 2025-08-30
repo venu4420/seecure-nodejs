@@ -67,7 +67,7 @@ resource "google_sql_database_instance" "postgres" {
     ip_configuration {
       ipv4_enabled    = false
       private_network = google_compute_network.vpc.id
-      require_ssl     = false
+      ssl_mode        = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
     }
 
     backup_configuration {
@@ -170,7 +170,7 @@ resource "google_cloud_run_v2_service" "app" {
       resources {
         limits = {
           cpu    = "1000m"
-          memory = "256Mi"  # Reduced for free tier
+          memory = "512Mi"  
         }
       }
     }
