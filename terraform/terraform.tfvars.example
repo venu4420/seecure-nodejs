@@ -1,0 +1,4 @@
+project_id          = "your-gcp-project-id"
+region              = "us-central1"
+notification_email  = "alerts@yourcompany.com"
+chat_webhook_url    = "https://chat.googleapis.com/v1/spaces/YOUR_SPACE/messages?key=YOUR_KEY"
