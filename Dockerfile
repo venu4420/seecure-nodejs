@@ -19,4 +19,4 @@ USER nodejs
 
 EXPOSE 8080
 
-CMD ["node", "src/app.js"]
+CMD ["node", "src/simple-app.js"]
